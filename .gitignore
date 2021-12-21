@@ -1,0 +1,7 @@
+*.pyc
+__pycache__/
+data1.txt
+data2.txt
+data3.txt
+weights/
+testresults.txt

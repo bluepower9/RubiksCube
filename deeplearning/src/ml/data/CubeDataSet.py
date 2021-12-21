@@ -1,28 +1,52 @@
 from torch.utils.data import Dataset
-from utils.FaceMap import faceMap
+from utils.Maps import faceMap
+from utils.helper import convert_input
 import torch
 
 
 class CubeDataSet(Dataset):
-    def __init__(self, filename, device = 'cpu') -> None:
+    def __init__(self, filename, inputtype = '1d', size = -1) -> None:
+        self.maxsize = size
         data = self.read_data(filename)
         self.x = [i[0] for i in data]
-        self.x = self.convert_input(self.x)
-        self.y = [i[1]/26 for i in data]
+        self.x = convert_input(self.x, intype = inputtype)
+        self.y = [i[1] for i in data]   # /26 to normalize between 0 - 1
 
 
-    def convert_input(self, input) -> list:
+
+    def read_data(self, filename) -> list:
         '''
-        coverts input string list into array of ints to represent face values.
+        reads the data from the given text file and parses it into List of form: [(str, int)]
+        file should be in the form: str \\t int
         '''
         result = []
-        for value in input:
-            arr = []
-            for i in value:
-                arr.append(faceMap[i])
-            result.append(torch.FloatTensor(arr))
+        count = 0
+        with open(filename, 'r') as file:
+            line = file.readline()
+            while line and (self.maxsize == -1 or count < self.maxsize):
+                parsedData = line.split('\t')
+                result.append((parsedData[0], int(parsedData[1])))
+                line = file.readline()
+                count += 1
 
         return result
+
+    def __len__(self) -> int:
+        return len(self.x)
+
+    def __getitem__(self, idx) -> tuple:
+        return [self.x[idx], self.y[idx]]
+
+
+
+
+class CubeDataSet2(Dataset):
+    def __init__(self, filename, inputtype = '') -> None:
+        data = self.read_data(filename)
+        self.x = [i[0] for i in data]
+        self.x = convert_input(self.x, intype='2d')
+        self.y = [i[1] for i in data]   # /26 to normalize between 0 - 1
+
 
 
     def read_data(self, filename) -> list:
@@ -45,5 +69,3 @@ class CubeDataSet(Dataset):
 
     def __getitem__(self, idx) -> tuple:
         return [self.x[idx], self.y[idx]]
-
-

@@ -2,28 +2,14 @@ from rubik.cube import Cube
 import random
 import argparse, time
 from alive_progress import alive_bar
+from utils.Maps import moveMap
 
 FILENAME = "./data/data1.txt"
 
 COUNT = 1000000
 
-#maps turn to cube function
-movemap = {
-    'U': Cube.U,
-    'Ui': Cube.Ui,
-    'D': Cube.D,
-    'Di': Cube.Di,
-    'L': Cube.L,
-    'Li': Cube.Li,
-    'R': Cube.R,
-    'Ri': Cube.Ri,
-    'F': Cube.F,
-    'Fi': Cube.Fi,
-    'B': Cube.B,
-    'Bi': Cube.Bi
-}
 
-def generate_combination() -> tuple:
+def generate_combination(turns = -1) -> tuple:
     '''
     Generates a random cube combination and records how far away from solved state it is.
     Utilizes piece face position (U, D, L, R, F, B) instead of colors to keep data color independent.
@@ -32,18 +18,22 @@ def generate_combination() -> tuple:
     c = Cube('UUUUUUUUULLLFFFRRRBBBLLLFFFRRRBBBLLLFFFRRRBBBDDDDDDDDD')
     
     #based on proof from 2014 that you only need 26 quarter turns to solve a rubkik's cube
-    numMoves = random.randrange(1, 27)
-    #keeps track of turns to make sure you do not surpass 2 turns of the same move.
-    prevmove = ''
-    prevcount = 0
+    if turns == -1:
+        numMoves = random.randrange(1, 27)
+    else:
+        numMoves = turns
 
-    possibleMoves = list(movemap.keys())
+    #keeps track of turns to make sure you do not surpass 2 turns of the same move.
+    prevmove = ' '
+    prevcount = 1
+
+    possibleMoves = list(moveMap.keys())
 
 
     for i in range(numMoves):
         move = random.choice(possibleMoves)
-        #if move is same as previous move and it has already done it twice, finds another move.
-        while move == prevmove and prevcount == 2:
+        #if move is same as previous move and it has already done it twice or the move reverses the previous move, finds another move.
+        while (move == prevmove and prevcount == 2) or (len(move) != len(prevmove) and move[0] == prevmove[0]):
             move = random.choice(possibleMoves)
         
         #resets prevcount if it is a different move else increments
@@ -53,7 +43,7 @@ def generate_combination() -> tuple:
             prevcount += 1
         
         prevmove = move
-        movemap[move](c)
+        moveMap[move](c)
 
     return c.flat_str(), numMoves
 
@@ -66,7 +56,7 @@ def save_data(data: list, name:str = FILENAME) -> bool:
     '''
 
     try:
-        with open(name, 'w') as file:
+        with open(name, 'a') as file:
             for cube, num in data:
                 file.write(cube + '\t' +str(num) + '\n')
     except Exception as e:
@@ -75,7 +65,7 @@ def save_data(data: list, name:str = FILENAME) -> bool:
 
     return True
 
-def generate_data(count:int = COUNT, file:str = FILENAME) -> bool:
+def generate_data(count:int = COUNT, file:str = FILENAME, save_epoch = 100000) -> bool:
     '''
     generates data and saves it in a file.
     '''
@@ -87,14 +77,21 @@ def generate_data(count:int = COUNT, file:str = FILENAME) -> bool:
         for i in range(count):
             data.append((generate_combination()))
             bar()
+            if i%save_epoch == 0:
+                result = save_data(data, file)
+                data = []
+                if not result:
+                    print('Failed to save data.')
+                    return result
 
     
-    print('saving data...')
+    print('saving data to: ', file + '...')
     result = save_data(data, file)
     if result:
         print('successfully saved data.')
     else:
         print('Failed to save data.')
+    
     
     return result
 
